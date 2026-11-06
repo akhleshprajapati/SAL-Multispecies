@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAL — a living archive of trees</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============ SAL · design tokens ============ */
+:root{
+  --paper:#f4efe3; --card:#fffdf6;
+  --ink:#33291d; --ink-soft:#6b5d49;
+  --brown:#7a4a21; --brown-deep:#5b3517;
+  --green:#2f6b3f; --leaf:#4c8a54; --leaf-light:#7fae86;
+  --accent:#c46a2b; --gold:#c9a24b;
+  --shadow:0 18px 40px -18px rgba(59,42,20,.35);
+  --ease:cubic-bezier(.65,.05,.2,1);
+  --serif:'Fraunces',Georgia,'Times New Roman',serif;
+  --sans:'Inter',system-ui,-apple-system,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:var(--sans); color:var(--ink); background:var(--paper);
+  background-image:radial-gradient(rgba(122,74,33,.05) 1px, transparent 1.4px);
+  background-size:26px 26px; line-height:1.65; overflow-x:hidden;
+}
+::selection{background:var(--leaf-light);color:#fff}
+button{font-family:inherit;cursor:pointer}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px;border-radius:6px}
+
+/* ============ top bar ============ */
+.topbar{position:fixed;inset:0 0 auto 0;z-index:60;display:flex;align-items:center;
+  justify-content:space-between;padding:.8rem 1.4rem;
+  background:rgba(244,239,227,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(122,74,33,.14)}
+.logo{display:flex;align-items:center;gap:.55rem;text-decoration:none;font-family:var(--serif);
+  font-weight:700;font-size:1.35rem;letter-spacing:.14em;color:var(--brown-deep)}
+.logo svg{transition:transform .6s var(--ease)}
+.logo:hover svg{transform:rotate(-14deg) scale(1.12)}
+.nav{display:flex;gap:.35rem}
+.nav a{text-decoration:none;font-size:.86rem;font-weight:600;letter-spacing:.06em;
+  color:var(--ink-soft);padding:.45rem .85rem;border-radius:999px;transition:color .3s,background .3s}
+.nav a:hover{color:var(--brown-deep);background:rgba(76,138,84,.12)}
+.nav a.on{color:#fff;background:var(--green)}
+
+/* ============ views & transitions ============ */
+.view{display:none;min-height:100vh;padding:6.2rem 1.4rem 5rem}
+.view.active{display:block;animation:viewIn .55s var(--ease) both}
+@keyframes viewIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+.wrap{max-width:1080px;margin:0 auto}
+.narrow{max-width:760px;margin:0 auto}
+.reveal{opacity:0;transform:translateY(26px);transition:opacity .8s var(--ease),transform .8s var(--ease)}
+.reveal.vis{opacity:1;transform:none}
+
+/* ============ home ============ */
+.hero{min-height:calc(100vh - 6rem);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;position:relative}
+.hero .kicker{font-size:.78rem;letter-spacing:.34em;text-transform:uppercase;color:var(--leaf);font-weight:600}
+.hero h1{font-family:var(--serif);font-size:clamp(3.4rem,10vw,7rem);font-weight:700;
+  color:var(--brown-deep);letter-spacing:.1em;line-height:1;margin:.6rem 0 .4rem}
+.hero h1 .dot{color:var(--leaf)}
+.hero .tag{font-family:var(--serif);font-style:italic;font-size:clamp(1.05rem,2.6vw,1.45rem);color:var(--ink-soft);max-width:34ch}
+.hero .rule{width:70px;height:3px;background:var(--gold);border-radius:3px;margin:1.6rem auto 2.4rem;animation:breathe 4s ease-in-out infinite}
+@keyframes breathe{0%,100%{transform:scaleX(1)}50%{transform:scaleX(1.6)}}
+.options{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem;width:min(880px,100%)}
+.opt{background:var(--card);border:1px solid rgba(122,74,33,.16);border-radius:22px;padding:1.9rem 1.5rem;
+  text-decoration:none;text-align:left;position:relative;overflow:hidden;
+  transition:transform .5s var(--ease),box-shadow .5s var(--ease),border-color .4s;
+  display:flex;flex-direction:column;gap:.7rem}
+.opt:hover{transform:translateY(-8px);box-shadow:var(--shadow);border-color:rgba(76,138,84,.5)}
+.opt .ic{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;font-size:1.4rem;
+  background:linear-gradient(140deg,rgba(76,138,84,.18),rgba(201,162,75,.22));transition:transform .6s var(--ease)}
+.opt:hover .ic{transform:rotate(-10deg) scale(1.1)}
+.opt h3{font-family:var(--serif);font-size:1.35rem;color:var(--brown-deep)}
+.opt p{font-size:.9rem;color:var(--ink-soft)}
+.opt .go{margin-top:auto;font-size:.82rem;font-weight:600;letter-spacing:.1em;color:var(--green);text-transform:uppercase}
+.opt .go::after{content:' →';transition:margin .3s}
+.opt:hover .go::after{margin-left:6px}
+.fleaf{position:absolute;opacity:.5;pointer-events:none;animation:drift linear infinite}
+@keyframes drift{0%{transform:translate3d(0,-12vh,0) rotate(0deg)}50%{transform:translate3d(6vw,45vh,0) rotate(160deg)}100%{transform:translate3d(-4vw,108vh,0) rotate(340deg)}}
+
+/* ============ headings ============ */
+.view-title{font-family:var(--serif);font-size:clamp(2rem,5vw,3rem);color:var(--brown-deep);margin-bottom:.4rem}
+.sub{color:var(--ink-soft);max-width:56ch;margin-bottom:2rem}
+.back{display:inline-block;margin-bottom:1.4rem;font-size:.88rem;font-weight:600;color:var(--green);text-decoration:none}
+.back:hover{text-decoration:underline}
+
+/* ============ search ============ */
+.searchbox{display:flex;align-items:center;gap:.7rem;background:var(--card);border:2px solid rgba(122,74,33,.2);
+  border-radius:999px;padding:.95rem 1.4rem;transition:border-color .3s,box-shadow .3s;margin-bottom:1.8rem}
+.searchbox:focus-within{border-color:var(--leaf);box-shadow:0 0 0 5px rgba(76,138,84,.14)}
+.searchbox input{border:0;outline:0;background:transparent;font-size:1.05rem;width:100%;color:var(--ink);font-family:var(--sans)}
+.results{display:flex;flex-direction:column;gap:.9rem}
+.res{display:flex;align-items:center;gap:1rem;background:var(--card);border:1px solid rgba(122,74,33,.15);
+  border-radius:18px;padding:1rem 1.3rem;text-decoration:none;width:100%;text-align:left;
+  transition:transform .4s var(--ease),box-shadow .4s var(--ease)}
+.res:hover{transform:translateX(8px);box-shadow:var(--shadow)}
+.res .thumb{width:54px;height:54px;flex:none;border-radius:16px;font-size:1.7rem;
+  background:linear-gradient(150deg,#e8f0e2,#f3e8cf);display:grid;place-items:center}
+.res .nm{font-family:var(--serif);font-size:1.15rem;color:var(--brown-deep)}
+.res .nm mark{background:rgba(201,162,75,.4);border-radius:3px;padding:0 2px}
+.res .mt{font-size:.82rem;color:var(--ink-soft);font-style:italic}
+.res .langs{margin-left:auto;display:flex;gap:.35rem;flex-wrap:wrap;justify-content:flex-end}
+.lang{font-size:.68rem;font-weight:600;letter-spacing:.05em;padding:.2rem .55rem;border-radius:999px;background:rgba(76,138,84,.14);color:var(--green)}
+.empty{text-align:center;color:var(--ink-soft);padding:2.5rem 1rem;font-style:italic}
+
+/* ============ explore ============ */
+.letter{font-family:var(--serif);font-size:1.6rem;color:var(--gold);margin:1.6rem 0 .7rem;display:flex;align-items:center;gap:.8rem}
+.letter::after{content:'';height:1px;flex:1;background:rgba(122,74,33,.18)}
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1.2rem}
+.tcard{background:var(--card);border:1px solid rgba(122,74,33,.16);border-radius:22px;overflow:hidden;
+  text-decoration:none;transition:transform .5s var(--ease),box-shadow .5s var(--ease);display:block}
+.tcard:hover{transform:translateY(-8px) rotate(-.5deg);box-shadow:var(--shadow)}
+.tcard .art{height:150px;background:linear-gradient(160deg,#eef2dd,#f6ecd4);display:grid;place-items:center;overflow:hidden}
+.tcard .glyph{font-size:3.6rem;display:block;transition:transform .8s var(--ease)}
+.tcard:hover .glyph{transform:scale(1.18) rotate(-5deg)}
+.tcard .bd{padding:1.1rem 1.2rem 1.3rem}
+.tcard h3{font-family:var(--serif);color:var(--brown-deep);font-size:1.25rem}
+.tcard .sci{font-style:italic;font-size:.85rem;color:var(--ink-soft);margin:.15rem 0 .5rem}
+.tcard .ct{font-size:.78rem;font-weight:600;color:var(--green);letter-spacing:.06em}
+.soon{border:2px dashed rgba(122,74,33,.25);border-radius:22px;display:grid;place-items:center;
+  min-height:230px;color:var(--ink-soft);font-style:italic;text-align:center;padding:1.4rem}
+
+/* ============ tree page ============ */
+.tree-head h1{font-family:var(--serif);font-size:clamp(2.3rem,6vw,3.6rem);color:var(--brown-deep);line-height:1.05}
+.tree-head .sci{font-style:italic;color:var(--leaf);font-size:1.1rem;margin:.3rem 0 .9rem}
+.chips{display:flex;flex-wrap:wrap;gap:.45rem;margin-bottom:1.6rem}
+.chip{font-size:.78rem;background:var(--card);border:1px solid rgba(122,74,33,.18);border-radius:999px;padding:.3rem .8rem;color:var(--ink-soft)}
+.chip b{color:var(--brown-deep);font-weight:600}
+.lead{font-size:1.08rem;max-width:62ch;margin-bottom:1rem}
+.lead:first-of-type::first-letter{font-family:var(--serif);font-size:3.1rem;float:left;line-height:.9;padding-right:.5rem;color:var(--accent)}
+.stories{margin:2.6rem 0 3rem;background:var(--card);border:1px solid rgba(122,74,33,.15);border-radius:24px;padding:1.8rem;box-shadow:var(--shadow)}
+.tabs{display:flex;gap:.4rem;flex-wrap:wrap;border-bottom:1px solid rgba(122,74,33,.15);margin-bottom:1.3rem}
+.tabs button{border:0;background:transparent;font-family:var(--serif);font-size:1.02rem;font-weight:600;color:var(--ink-soft);
+  padding:.6rem 1.1rem;border-radius:12px 12px 0 0;position:relative;transition:color .3s,background .3s}
+.tabs button::after{content:'';position:absolute;left:12%;right:12%;bottom:-1px;height:3px;border-radius:3px;background:var(--accent);transform:scaleX(0);transition:transform .45s var(--ease)}
+.tabs button:hover{color:var(--brown-deep)}
+.tabs button.on{color:var(--brown-deep);background:rgba(201,162,75,.12)}
+.tabs button.on::after{transform:scaleX(1)}
+.pane{display:none;animation:paneIn .5s var(--ease)}
+.pane.on{display:block}
+.pane p{margin-bottom:.9rem;max-width:64ch}
+@keyframes paneIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.residents h2{font-family:var(--serif);font-size:clamp(1.7rem,4vw,2.4rem);color:var(--brown-deep)}
+.res-grid{display:grid;grid-template-columns:minmax(320px,5fr) 4fr;gap:1.8rem;margin-top:1.4rem;align-items:start}
+.stage-col{position:sticky;top:5.4rem}
+.stage{position:relative;overflow:hidden;border-radius:26px;aspect-ratio:2/3;
+  background:linear-gradient(180deg,#f8f4e6 0%,#f0f0da 62%,#e9dfc4 100%);
+  border:1px solid rgba(122,74,33,.18);box-shadow:var(--shadow)}
+.stage-inner{position:absolute;inset:0;transition:transform 1.25s var(--ease);transform-origin:0 0;will-change:transform}
+.stage-inner svg.tree{width:100%;height:100%;display:block}
+.tree-photo{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.stage.zoomed{cursor:zoom-out}
+.hotspot{position:absolute;transform:translate(-50%,-50%) scale(calc(1/var(--s,1)));
+  width:34px;height:34px;border-radius:50%;border:0;background:rgba(255,253,246,.9);
+  display:grid;place-items:center;transition:transform 1.25s var(--ease),opacity .6s;
+  box-shadow:0 4px 14px rgba(59,42,20,.3)}
+.hs-dot{width:12px;height:12px;border-radius:50%;background:var(--accent);position:relative}
+.hs-dot::after{content:'';position:absolute;inset:-7px;border-radius:50%;border:2px solid var(--accent);animation:pulse 2.2s ease-out infinite}
+@keyframes pulse{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.5);opacity:0}}
+.hs-label{position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%) translateY(4px);
+  background:var(--brown-deep);color:#fff;font-size:.72rem;font-weight:600;letter-spacing:.04em;
+  padding:.3rem .65rem;border-radius:8px;white-space:nowrap;opacity:0;pointer-events:none;transition:.3s var(--ease)}
+.hotspot:hover .hs-label,.hotspot:focus-visible .hs-label{opacity:1;transform:translateX(-50%) translateY(0)}
+.hotspot.active{background:var(--accent)}
+.hotspot.active .hs-dot{background:#fff}
+.hotspot.active .hs-dot::after{border-color:#fff}
+.stage.zoomed .hotspot:not(.active){opacity:.12;pointer-events:none}
+.zoom-out{position:absolute;top:14px;right:14px;z-index:5;border:0;border-radius:999px;padding:.55rem 1rem;
+  background:var(--brown-deep);color:#fff;font-size:.82rem;font-weight:600;letter-spacing:.05em;
+  opacity:0;pointer-events:none;transform:translateY(-8px);transition:.4s var(--ease)}
+.stage.zoomed .zoom-out{opacity:1;pointer-events:auto;transform:none}
+.hint{font-size:.8rem;color:var(--ink-soft);text-align:center;margin-top:.7rem;font-style:italic}
+.species-list{display:flex;flex-direction:column;gap:.85rem}
+.sp{display:flex;align-items:center;gap:1rem;background:var(--card);border:1px solid rgba(122,74,33,.15);
+  border-radius:18px;padding:.9rem 1.1rem;text-align:left;width:100%;
+  transition:transform .45s var(--ease),box-shadow .45s var(--ease),border-color .3s}
+.sp:hover{transform:translateX(-8px);box-shadow:var(--shadow);border-color:rgba(76,138,84,.5)}
+.sp .blob{width:52px;height:52px;flex:none;border-radius:46% 54% 52% 48%/52% 46% 54% 48%;
+  display:grid;place-items:center;font-size:1.55rem;overflow:hidden;transition:transform .6s var(--ease)}
+.sp:hover .blob{transform:rotate(-8deg) scale(1.08)}
+.sp .nm{font-family:var(--serif);font-size:1.06rem;color:var(--brown-deep);line-height:1.25}
+.sp .sci{font-size:.78rem;font-style:italic;color:var(--ink-soft)}
+.sp .part{margin-left:auto;flex:none;font-size:.68rem;font-weight:600;letter-spacing:.05em;color:var(--brown);
+  background:rgba(196,106,43,.13);border-radius:999px;padding:.28rem .6rem;text-align:right}
+
+/* ============ species sheet ============ */
+.sheet{position:fixed;top:0;right:0;bottom:0;z-index:80;width:min(430px,94vw);
+  background:var(--card);box-shadow:-24px 0 60px -30px rgba(59,42,20,.5);
+  transform:translateX(105%);transition:transform .7s var(--ease);
+  display:flex;flex-direction:column;border-left:1px solid rgba(122,74,33,.15)}
+.sheet.open{transform:none}
+.sheet header{padding:1.7rem 1.6rem 1.1rem;border-bottom:1px solid rgba(122,74,33,.12);position:relative}
+.sheet .close{position:absolute;top:1rem;right:1rem;border:0;background:rgba(122,74,33,.1);border-radius:50%;
+  width:36px;height:36px;font-size:1rem;color:var(--brown-deep);transition:.3s}
+.sheet .close:hover{background:var(--accent);color:#fff;transform:rotate(90deg)}
+.sheet .blob{width:84px;height:84px;border-radius:46% 54% 52% 48%/52% 46% 54% 48%;display:grid;place-items:center;
+  font-size:2.6rem;margin-bottom:.8rem;overflow:hidden;animation:wobble 5s ease-in-out infinite}
+@keyframes wobble{0%,100%{border-radius:46% 54% 52% 48%/52% 46% 54% 48%}50%{border-radius:54% 46% 48% 52%/46% 54% 46% 54%}}
+.sheet h3{font-family:var(--serif);font-size:1.5rem;color:var(--brown-deep);line-height:1.15}
+.sheet .sci{font-style:italic;color:var(--leaf);font-size:.92rem;margin:.2rem 0 .6rem}
+.sheet .meta{display:flex;gap:.4rem;flex-wrap:wrap}
+.sheet .body{padding:1.2rem 1.6rem 2rem;overflow-y:auto}
+.sheet .tabs button{font-size:.92rem;padding:.5rem .85rem}
+.sheet .pane p{font-size:.93rem}
+
+/* ============ about ============ */
+.prose{max-width:66ch}
+.prose h2{font-family:var(--serif);color:var(--brown-deep);font-size:1.6rem;margin:2.2rem 0 .6rem}
+.prose p{margin-bottom:1rem}
+.prose ul{margin:0 0 1rem 1.2rem}
+.prose li{margin-bottom:.45rem}
+.prose .hl{background:linear-gradient(transparent 62%,rgba(201,162,75,.45) 62%)}
+.prose code{background:rgba(122,74,33,.1);border-radius:6px;padding:.1rem .4rem;font-size:.85em}
+.prose pre{background:var(--card);border:1px solid rgba(122,74,33,.18);border-radius:14px;padding:1rem 1.2rem;
+  overflow-x:auto;font-size:.8rem;line-height:1.5;margin-bottom:1rem}
+
+footer{padding:2.4rem 1.4rem 3rem;text-align:center;font-size:.8rem;color:var(--ink-soft);border-top:1px solid rgba(122,74,33,.14)}
+footer b{font-family:var(--serif);letter-spacing:.14em;color:var(--brown-deep)}
+
+@media(max-width:860px){
+  .options{grid-template-columns:1fr}
+  .res-grid{grid-template-columns:1fr}
+  .stage-col{position:static}
+  .sheet{top:auto;left:0;right:0;width:100%;height:min(76vh,640px);border-radius:26px 26px 0 0;
+    transform:translateY(105%);border-left:0;border-top:1px solid rgba(122,74,33,.15)}
+  .sheet.open{transform:none}
+  .res .langs{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .reveal{opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="logo" href="#/" aria-label="SAL home">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M12 22C7 17 4 13 4 9a8 8 0 0 1 16 0c0 4-3 8-8 13Z" fill="#4c8a54"/><path d="M12 22V6m0 0 4 4m-4-4-4 5" stroke="#f4efe3" stroke-width="1.6" stroke-linecap="round"/></svg>
+    SAL
+  </a>
+  <nav class="nav">
+    <a href="#/search" data-nav="search">Search</a>
+    <a href="#/explore" data-nav="explore">Explore</a>
+    <a href="#/about" data-nav="about">About</a>
+  </nav>
+</header>
+
+<main id="app">
+
+<!-- ================= HOME ================= -->
+<section class="view" id="view-home">
+  <div class="hero wrap">
+    <span class="fleaf" style="left:8%;animation-duration:19s"><svg width="34" height="34" viewBox="0 0 24 24"><path d="M12 22C7 17 4 13 4 9a8 8 0 0 1 16 0c0 4-3 8-8 13Z" fill="#7fae86"/></svg></span>
+    <span class="fleaf" style="left:78%;animation-duration:24s;animation-delay:-8s"><svg width="26" height="26" viewBox="0 0 24 24"><path d="M12 22C7 17 4 13 4 9a8 8 0 0 1 16 0c0 4-3 8-8 13Z" fill="#c9a24b"/></svg></span>
+    <span class="fleaf" style="left:46%;animation-duration:28s;animation-delay:-15s"><svg width="20" height="20" viewBox="0 0 24 24"><path d="M12 22C7 17 4 13 4 9a8 8 0 0 1 16 0c0 4-3 8-8 13Z" fill="#4c8a54"/></svg></span>
+    <span class="kicker">a living archive of trees</span>
+    <h1>SAL<span class="dot">.</span></h1>
+    <p class="tag">Every tree is a world. Meet the beings who live on it — leaf by leaf, story by story.</p>
+    <div class="rule"></div>
+    <div class="options">
+      <a class="opt reveal" href="#/search"><span class="ic">🔍</span><h3>Search</h3>
+        <p>Find a tree by its name in English, हिन्दी, ಕನ್ನಡ, മലയാളം, සිංහල and more.</p><span class="go">Search</span></a>
+      <a class="opt reveal" href="#/explore"><span class="ic">🌿</span><h3>Explore</h3>
+        <p>Wander through the grove — every tree in the archive, in alphabetical order.</p><span class="go">Explore</span></a>
+      <a class="opt reveal" href="#/about"><span class="ic">📖</span><h3>About the Project</h3>
+        <p>Why SAL exists, how it grows, and the hands and stories behind it.</p><span class="go">About</span></a>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SEARCH ================= -->
+<section class="view" id="view-search">
+  <div class="wrap narrow">
+    <h1 class="view-title reveal">Search the forest</h1>
+    <p class="sub reveal">Type a name in any language — a tree may be known by many.</p>
+    <div class="searchbox reveal">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="10.5" cy="10.5" r="6.5" stroke="#7a4a21" stroke-width="2"/><path d="m15.5 15.5 5 5" stroke="#7a4a21" stroke-width="2" stroke-linecap="round"/></svg>
+      <input id="searchInput" type="search" placeholder="e.g. fishtail, kitul, माडल, ಬೆಂಡೆ ಜಿಂಗು, साल, साखू…" autocomplete="off">
+    </div>
+    <div id="searchResults" class="results"></div>
+  </div>
+</section>
+
+<!-- ================= EXPLORE ================= -->
+<section class="view" id="view-explore">
+  <div class="wrap">
+    <h1 class="view-title reveal">Explore the grove</h1>
+    <p class="sub reveal">All the trees in SAL, from A to Z. One tree at a time, the forest grows.</p>
+    <div id="exploreList"></div>
+  </div>
+</section>
+
+<!-- ================= ABOUT ================= -->
+<section class="view" id="view-about">
+  <div class="wrap narrow prose">
+    <h1 class="view-title reveal">About the Project</h1>
+    <p class="sub reveal">SAL is a growing, breathing archive of trees and the lives they hold.</p>
+    <div class="reveal">
+      <p><span class="hl">A tree is never alone.</span> Stand under any old tree and you are standing under a neighbourhood — birds in the canopy, bats at the fruit, caterpillars on the leaves, ferns and orchids on the bark, civets waiting below for what falls. SAL tells these gathered stories together: the story of the tree, and the stories of everyone living on it.</p>
+      <h2>What SAL does</h2>
+      <ul>
+        <li><b>Search</b> a tree by any of its names — English, Hindi, Kannada, Malayalam, Sinhala, scientific…</li>
+        <li><b>Explore</b> the whole grove in alphabetical order.</li>
+        <li><b>Open a tree</b> to read its scientific, cultural and historical stories.</li>
+        <li><b>Meet its residents</b>: tap a species (or a marker on the illustrated tree) and the tree gently <b>zooms into the part where that species lives</b>, opening its own scientific, cultural and historical story.</li>
+      </ul>
+      <h2>How SAL is built</h2>
+      <p>The website machine lives in one file, <code>website.html</code>. Every tree lives in its own tiny data file inside the <code>trees/</code> folder — for example <code>trees/fishtail_palm.js</code> or <code>trees/sal.js</code> — holding only its names, stories, residents and illustration. A tree may also supply a real photograph via <code>artImg</code>; the painted illustration remains as the offline fallback. Adding a tree means copying <code>trees/_template.js</code>, filling it in, and adding one line to website.html.</p>
+      <pre>sal/
+├── website.html         ← the whole website (engine + animations)
+└── trees/
+    ├── fishtail_palm.js ← one file per tree (pure data)
+    ├── sal.js
+    ├── _template.js     ← copy to grow the grove
+    └── …</pre>
+      <h2>How it feels</h2>
+      <p>SAL's movement is inspired by <i>livingbreathing.design</i> — slow, organic, breathing transitions: pages rise like leaves, markers pulse like heartbeats, and the zoom into a tree part is one continuous, calm camera move rather than a jump. Illustrations are painted with light: one sun direction, grainy bark, soft shadows and layered leaves.</p>
+      <h2>Our first trees</h2>
+      <p>The archive begins with the <b>Fishtail Palm (<i>Caryota urens</i>)</b> and the <b>Sal (<i>Shorea robusta</i>)</b>, adapted from Nature Classrooms posters (CC BY-SA 4.0). Their residents — hornbills, fruit bats, palm bobs, epiphytes, civets, thrips, caterpillars, heartwood borers, forest birds and palm squirrels — are the first citizens of SAL.</p>
+      <p><i>The stories here are short, illustrative tellings meant for classrooms and curious minds; each tree file can be deepened freely.</i></p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= TREE (rendered by engine) ================= -->
+<section class="view" id="view-tree"><div class="wrap" id="treeRoot"></div></section>
+
+</main>
+
+<!-- ================= SPECIES SHEET ================= -->
+<aside class="sheet" id="sheet" aria-hidden="true">
+  <header>
+    <button class="close" id="sheetClose" aria-label="Close and zoom out">✕</button>
+    <div class="blob" id="shBlob">🦇</div>
+    <h3 id="shName"></h3>
+    <p class="sci" id="shSci"></p>
+    <div class="meta" id="shMeta"></div>
+  </header>
+  <div class="body">
+    <div class="tabs" id="shTabs">
+      <button data-tab="scientific" class="on">Scientific</button>
+      <button data-tab="cultural">Cultural</button>
+      <button data-tab="historical">Historical</button>
+    </div>
+    <div id="shPanes"></div>
+  </div>
+</aside>
+
+<footer>
+  <b>SAL</b> · a living archive of trees<br>
+  movement inspired by livingbreathing.design · trees after Nature Classrooms posters (CC BY-SA 4.0)
+</footer>
+
+<!-- ==========================================================
+     1) REGISTRY — must come BEFORE the tree files
+========================================================== -->
+<script>
+window.SAL = {
+  trees: [],
+  addTree: function(t){ this.trees.push(t); }
+};
+</script>
+
+<!-- ==========================================================
+     2) TREE DATA FILES — one <script> line per tree.
+        TO ADD A TREE: copy trees/_template.js → trees/sal.js,
+        fill it in, then add its line here. That's all.
+========================================================== -->
+<script src="trees/fishtail_palm.js"></script>
+<script src="trees/sal.js"></script>
+<!-- <script src="trees/banyan.js"></script> -->
+
+<!-- ==========================================================
+     3) ENGINE — structure, router, search, zoom, animations
+========================================================== -->
+<script>
+const TREES = SAL.trees;
+const $  = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const norm = s => s.toLowerCase().trim();
+
+/* fallback illustration for trees without custom art */
+const GENERIC_ART = `<svg class="tree" viewBox="0 0 600 900">
+  <ellipse cx="300" cy="850" rx="150" ry="20" fill="#e2d6ba"/>
+  <rect x="282" y="380" width="36" height="460" rx="18" fill="#b39a72"/>
+  <circle cx="300" cy="290" r="165" fill="#3f8352"/>
+  <circle cx="215" cy="345" r="105" fill="#46915a"/>
+  <circle cx="385" cy="345" r="105" fill="#2f6b3f"/></svg>`;
+
+/* reveal-on-scroll */
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if(e.isIntersecting){ e.target.classList.add('vis'); io.unobserve(e.target); }
+}), {threshold:.12});
+const bindReveals = root => (root||document).querySelectorAll('.reveal:not(.vis)').forEach(el => io.observe(el));
+
+/* generic tabs */
+function bindTabs(root){
+  root.querySelectorAll('.tabs').forEach(tabs => {
+    tabs.addEventListener('click', e => {
+      const btn = e.target.closest('button[data-tab]'); if(!btn) return;
+      tabs.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === btn));
+      const box = tabs.nextElementSibling;
+      box.querySelectorAll('.pane').forEach(p => p.classList.toggle('on', p.dataset.pane === btn.dataset.tab));
+    });
+  });
+}
+const panesHTML = stories => `<div class="panes">` +
+  ['scientific','cultural','historical'].map((k,i) =>
+    `<div class="pane ${i===0?'on':''}" data-pane="${k}">` +
+    (stories[k]||[]).map(p => `<p>${p}</p>`).join('') + `</div>`).join('') + `</div>`;
+
+/* ============ router ============ */
+function route(){
+  const h = location.hash.replace(/^#/,'') || '/';
+  $$('.view').forEach(v => v.classList.remove('active'));
+  $$('.nav a').forEach(a => a.classList.toggle('on', a.getAttribute('href') === '#'+h));
+  closeSheet();
+  let view;
+  if(h === '/')            view = '#view-home';
+  else if(h === '/search') view = '#view-search';
+  else if(h === '/explore')view = '#view-explore';
+  else if(h === '/about')  view = '#view-about';
+  else if(h.startsWith('/tree/')){
+    const tree = TREES.find(t => t.id === h.slice(6));
+    if(tree){ renderTree(tree); view = '#view-tree'; } else view = '#view-home';
+  } else view = '#view-home';
+  const el = $(view);
+  el.classList.add('active');
+  window.scrollTo(0,0);
+  bindReveals(el);
+  if(view === '#view-search') runSearch($('#searchInput').value);
+  if(view === '#view-explore') renderExplore();
+}
+window.addEventListener('hashchange', route);
+
+/* ============ search (all languages) ============ */
+function runSearch(q){
+  const box = $('#searchResults'); q = norm(q);
+  const hits = [];
+  TREES.forEach(t => {
+    const matched = [];
+    (t.names||[]).forEach(n => n.values.forEach(v => {
+      if(!q || norm(v).includes(q)) matched.push({lang:n.lang, v});
+    }));
+    if(matched.length) hits.push({t, matched});
+  });
+  if(!hits.length){
+    box.innerHTML = `<p class="empty">No tree answers to “${esc(q)}” yet.<br>The grove is young — more trees are taking root.</p>`;
+    return;
+  }
+  box.innerHTML = hits.map(({t, matched}) => {
+    const safe = q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    const label = q
+      ? esc(matched[0].v).replace(new RegExp('('+safe+')','i'), '<mark>$1</mark>')
+      : esc(t.english);
+    const langs = [...new Set(matched.map(m => m.lang))].slice(0,4).map(l => `<span class="lang">${esc(l)}</span>`).join('');
+    return `<button class="res reveal vis" onclick="location.hash='#/tree/${t.id}'">
+      <span class="thumb">${t.glyph||'🌳'}</span>
+      <span><span class="nm">${label}</span><br><span class="mt">${esc(t.scientific)}</span></span>
+      <span class="langs">${langs}</span></button>`;
+  }).join('');
+}
+$('#searchInput').addEventListener('input', e => runSearch(e.target.value));
+
+/* ============ explore (A→Z) ============ */
+function renderExplore(){
+  const list = $('#exploreList');
+  if(!TREES.length){ list.innerHTML = `<p class="empty">The grove is empty.<br>Add a tree file in <b>trees/</b> and one line in website.html.</p>`; return; }
+  const sorted = [...TREES].sort((a,b) => a.english.localeCompare(b.english));
+  const groups = {};
+  sorted.forEach(t => { const L = t.english[0].toUpperCase(); (groups[L] = groups[L] || []).push(t); });
+  list.innerHTML = Object.keys(groups).sort().map(L => `
+    <div class="letter reveal vis">${L}</div>
+    <div class="tgrid">
+      ${groups[L].map(t => `
+        <a class="tcard reveal vis" href="#/tree/${t.id}">
+          <span class="art"><span class="glyph">${t.glyph||'🌳'}</span></span>
+          <span class="bd"><h3>${esc(t.english)}</h3><p class="sci">${esc(t.scientific)}</p>
+          <span class="ct">${(t.species||[]).length} residents · ${(t.names||[]).length} languages</span></span>
+        </a>`).join('')}
+      <div class="soon reveal vis">more trees are taking root…<br>(Banyan, Peepal, Neem — coming soon)</div>
+    </div>`).join('');
+  bindReveals(list);
+}
+
+/* ============ tree page ============ */
+function renderTree(t){
+  $('#treeRoot').innerHTML = `
+    <a class="back" href="#/explore">← the grove</a>
+    <header class="tree-head reveal">
+      <h1>${esc(t.english)}</h1>
+      <p class="sci">${esc(t.scientific)}</p>
+      <div class="chips">${(t.names||[]).map(n => `<span class="chip">${esc(n.lang)}: <b>${esc(n.values.join(', '))}</b></span>`).join('')}</div>
+    </header>
+    ${(t.intro||[]).map(p => `<p class="lead reveal">${p}</p>`).join('')}
+    <section class="stories reveal">
+      <div class="tabs">
+        <button data-tab="scientific" class="on">Scientific story</button>
+        <button data-tab="cultural">Cultural story</button>
+        <button data-tab="historical">Historical story</button>
+      </div>
+      ${panesHTML(t.stories||{})}
+    </section>
+    <section class="residents reveal">
+      <h2>Who lives on this tree?</h2>
+      <p class="sub">Tap a resident — or a pulsing marker on the tree — and SAL will zoom into the part of the tree where it lives.</p>
+      <div class="res-grid">
+        <div class="stage-col">
+          <div class="stage" id="stage">
+            <div class="stage-inner" id="stageInner">
+              ${t.art || GENERIC_ART}${t.artImg ? '<img class="tree-photo" src="' + t.artImg + '" alt="" onerror="this.style.display=\'none\'">' : ''}
+              ${(t.species||[]).map(sp => `
+                <button class="hotspot" data-id="${sp.id}" style="left:${sp.pos.x}%;top:${sp.pos.y}%" aria-label="${esc(sp.name)} — ${esc(sp.part)}">
+                  <span class="hs-dot"></span><span class="hs-label">${esc(sp.name)} · ${esc(sp.part)}</span>
+                </button>`).join('')}
+            </div>
+            <button class="zoom-out" id="zoomOut">⤺ zoom out</button>
+          </div>
+          <p class="hint">the tree breathes — tap a marker to visit a resident</p>
+        </div>
+        <div class="species-list">
+          ${(t.species||[]).map(sp => `
+            <button class="sp" data-id="${sp.id}">
+              <span class="blob" style="background:${sp.tint||'#e8e0cf'}">${sp.img ? `<img src="${sp.img}" alt="" style="width:100%;height:100%;object-fit:cover">` : (sp.icon||'🐾')}</span>
+              <span><span class="nm">${esc(sp.name)}</span><br><span class="sci">${esc(sp.sci)}</span></span>
+              <span class="part">${esc(sp.part)}</span>
+            </button>`).join('')}
+        </div>
+      </div>
+    </section>`;
+  bindTabs($('#treeRoot'));
+  bindReveals($('#treeRoot'));
+  $('#treeRoot').querySelectorAll('[data-id]').forEach(btn =>
+    btn.addEventListener('click', () => zoomTo(t.species.find(s => s.id === btn.dataset.id))));
+  $('#zoomOut').addEventListener('click', zoomOut);
+}
+
+/* ============ zoom camera + species sheet ============ */
+let currentSp = null;
+function zoomTo(sp){
+  const stage = $('#stage'), inner = $('#stageInner');
+  if(!stage || !sp) return;
+  currentSp = sp;
+  const r = stage.getBoundingClientRect();
+  const s = sp.zoom || 2.5;
+  const px = sp.pos.x/100 * r.width, py = sp.pos.y/100 * r.height;
+  inner.style.setProperty('--s', s);
+  inner.style.transform = `translate(${r.width/2 - px*s}px,${r.height/2 - py*s}px) scale(${s})`;
+  stage.classList.add('zoomed');
+  stage.querySelectorAll('.hotspot').forEach(h => h.classList.toggle('active', h.dataset.id === sp.id));
+  openSheet(sp);
+  if(window.innerWidth < 861) stage.scrollIntoView({behavior:'smooth', block:'center'});
+}
+function zoomOut(){
+  const stage = $('#stage'), inner = $('#stageInner');
+  if(!stage) return;
+  inner.style.transform = 'translate(0px,0px) scale(1)';
+  inner.style.setProperty('--s', 1);
+  stage.classList.remove('zoomed');
+  stage.querySelectorAll('.hotspot').forEach(h => h.classList.remove('active'));
+  closeSheet();
+}
+function openSheet(sp){
+  $('#shBlob').style.background = sp.tint || '#e8e0cf';
+  $('#shBlob').innerHTML = sp.img ? `<img src="${sp.img}" alt="" style="width:100%;height:100%;object-fit:cover">` : (sp.icon||'🐾');
+  $('#shName').textContent = sp.name;
+  $('#shSci').textContent = sp.sci || '';
+  $('#shMeta').innerHTML = `<span class="lang">${esc(sp.type||'Resident')}</span>
+    <span class="lang" style="background:rgba(196,106,43,.14);color:var(--brown)">lives on: ${esc(sp.part)}</span>`;
+  $('#shPanes').innerHTML = panesHTML(sp.stories||{});
+  $$('#shTabs button').forEach((b,i) => b.classList.toggle('on', i === 0));
+  $('#sheet').classList.add('open');
+  $('#sheet').setAttribute('aria-hidden','false');
+}
+function closeSheet(){
+  $('#sheet').classList.remove('open');
+  $('#sheet').setAttribute('aria-hidden','true');
+}
+$('#sheetClose').addEventListener('click', zoomOut);
+document.addEventListener('keydown', e => { if(e.key === 'Escape') zoomOut(); });
+window.addEventListener('resize', () => { if(currentSp && $('#stage')?.classList.contains('zoomed')) zoomTo(currentSp); });
+
+/* ============ boot: home loads automatically ============ */
+bindTabs($('#sheet'));               /* sheet tabs bound once */
+if(!TREES.length) console.warn('SAL: no tree files loaded. Check the <script src="trees/…"> lines in website.html.');
+if(!location.hash) location.hash = '#/';
+route();
+bindReveals(document);
+</script>
+</body>
+</html>
